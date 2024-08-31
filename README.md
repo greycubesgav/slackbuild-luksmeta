@@ -14,7 +14,23 @@ USBGuard and Tang.
 
 Homepage: https://github.com/latchset/luksmeta/
 
-## Build instructions
+## Docker Based Build Instructions
+
+The following instructions show how to build this package using the included Dockerfile.
+
+Docker needs to be installed and running before running the make command.
+
+The final artifact will be copied to a new ./pkgs directory
+
+```bash
+# Clone the git repo
+git clone https://github.com/greycubesgav/slackbuild-luksmeta
+cd slackbuild-luksmeta
+make docker-build-artifact
+# Slackware package will be created in ./pkgs
+```
+
+## Manual Build Instructions Under Slackware
 
 The following instructs show how to build the package locally under Slackware.
 
@@ -33,5 +49,5 @@ wget $(sed -n 's/DOWNLOAD="\(.*\)"/\1/p' luksmeta.info)
 Once the package is built, it can be installed with
 
 ```bash
-upgradepkg --install-new --reinstall /tmp/luksmeta-*.tgz
+upgradepkg --install-new --reinstall ./pkgs/luksmeta-*.tgz
 ```
