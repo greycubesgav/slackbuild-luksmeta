@@ -1,36 +1,19 @@
-FROM greycubesgav/slackware-docker-base:latest AS builder
+ARG DOCKER_FULL_BASE_IMAGE_NAME=greycubesgav/slackware-docker-base:aclemons-current
+FROM ${DOCKER_FULL_BASE_IMAGE_NAME} AS builder
 
-# Install the dependancies binaries for the build
-#ARG JOSE_VESION=jose-12-x86_64-1_GG.tgz
-#WORKDIR /root/jose/
-#RUN wget --no-check-certificate https://github.com/greycubesgav/slackbuild-jose/releases/download/main/${JOSE_VESION}
-#RUN upgradepkg --install-new --reinstall ${JOSE_VESION}
-
-#WORKDIR /root/jq/
-#RUN wget --no-check-certificate http://www.slackware.com/~alien/slackbuilds/jq/pkg64/15.0/jq-1.6-x86_64-1alien.txz && \
-#wget --no-check-certificate http://www.slackware.com/~alien/slackbuilds/jq/pkg64/15.0/jq-1.6-x86_64-1alien.txz.md5 && \
-#md5sum -c jq-1.6-x86_64-1alien.txz.md5
-# RUN upgradepkg --install-new --reinstall jq-1.6-x86_64-1alien.txz
+ARG TAG='_SL-CUR_GG' VERSION=9 BUILD=1
 
 # Copy over the build files
-COPY LICENSE *.info *.SlackBuild README slack-desc /root/build/
-
-# Set our prepended build artifact tag
-ENV TAG='_GG'
-
-# Grab the source and check the md5
+COPY src/luksmeta/luksmeta-${VERSION}.tar.bz2 LICENSE src/luksmeta/luksmeta.info src/luksmeta/luksmeta.SlackBuild src/luksmeta/README src/luksmeta/slack-desc /root/build/
 WORKDIR /root/build/
-RUN wget --no-check-certificate $(sed -n 's/DOWNLOAD="\(.*\)"/\1/p' *.info)
-RUN export pkgname=$(grep 'DOWNLOAD=' *.info| sed 's|.*/||;s|"||g') \
-&& export pkgmd5sum=$(sed -n 's/MD5SUM="\(.*\)"/\1/p' *.info) \
-&& echo "$pkgmd5sum  $pkgname" > "${pkgname}.md5" \
-&& md5sum -c "${pkgname}.md5"
-
+# Update the luksmeta.info file to match the version we're building
+RUN sed -i "s|VERSION=.*|VERSION=\"${VERSION}\"|" luksmeta.info && export MD5SUM=$(md5sum luksmeta-${VERSION}.tar.xz | cut -d ' ' -f 1) && sed -i "s|_MD5SUM_|${MD5SUM}|" luksmeta.info
 # Build the package
-RUN ./*.SlackBuild
+RUN VERSION="$VERSION" TAG="$TAG" BUILD="$BUILD" ./luksmeta.SlackBuild
+RUN installpkg /tmp/luksmeta-${VERSION}*.tgz
 
-#ENTRYPOINT [ "bash" ]
+# #ENTRYPOINT [ "bash" ]
 
 # Create a clean image with only the artifact
 FROM scratch AS artifact
-COPY --from=builder /tmp/*.tgz .
+COPY --from=builder /tmp/luksmeta-*.tgz .

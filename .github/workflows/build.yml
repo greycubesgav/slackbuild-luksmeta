@@ -1,22 +1,64 @@
-name: Build Packages
+name: Build All Packages
 
 on:
   workflow_dispatch:
   workflow_call:
+    outputs:
+      luksmeta_version:
+        description: The luksmeta version we're building
+        value: ${{ jobs.build.outputs.luksmeta_version }}
+      build_version:
+        description: The build date
+        value: ${{ jobs.build.outputs.build_version }}
+
+env:
+  DOCKER_USER: greycubesgav
+  DOCKER_IMAGE_NAME: slackbuild-luksmeta
 
 jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    outputs:
+      luksmeta_version: ${{ env.luksmeta_VERSION }}
+      build_version: ${{ steps.version-setter.outputs.build_version }}
     steps:
       - name: checkout code
         uses: actions/checkout@v4
 
+      - name: get version
+        id: version-setter
+        run: |
+          luksmeta_version=$(awk -F'"' '/^VERSION=/{print $2}' ./src/luksmeta/*.info)
+          build_version=$(date +%Y%m%d)
+          echo "Building release luksmeta v${luksmeta_version} build ${build_version}"
+          echo "luksmeta_version=${luksmeta_version}" >> "$GITHUB_OUTPUT"
+          echo "build_version=${build_version}" >> "$GITHUB_OUTPUT"
+          echo "luksmeta_VERSION=$luksmeta_version" >> $GITHUB_ENV
+          echo "BUILD_VERSION=$build_version" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Debug Outputs
+        run: |
+          echo "luksmeta_VERSION=${{ env.luksmeta_VERSION }}"
+          echo "BUILD_VERSION=${{ env.BUILD_VERSION }}"
+          echo "outputs.luksmeta_version=${{ steps.version-setter.outputs.luksmeta_version }}"
+          echo "outputs.build_version=${{ steps.version-setter.outputs.build_version }}"
+          echo "catting output"
+          cat "$GITHUB_OUTPUT"
+        shell: bash
+
       - name: build
-        run: make docker-build-artifact
+        run: |
+          echo "Building version luksmeta v${{ env.luksmeta_VERSION }} build ${{ env.BUILD_VERSION }} for slackware v15.0 and vCurrent"
+          make BUILD=${{ env.BUILD_VERSION }} docker-artifact-build-aclemons-current
+          make BUILD=${{ env.BUILD_VERSION }} docker-artifact-build-aclemons-15.0
+        shell: bash
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: slackbuild-pkgs
           path: pkgs/*
+
+
